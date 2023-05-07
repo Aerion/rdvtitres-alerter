@@ -3,6 +3,12 @@ MAIN_URL="https://teleservices.paris.fr/rdvtitres/jsp/site/Portal.jsp?page=appoi
 LOGIN_URL="https://moncompte.paris.fr/"
 ZIP_CODE="75001"
 
+TEMP_FOLDER="/tmp/rdvtitres-alerter"
+COOKIES_FILE="$TEMP_FOLDER/cookies.txt"
+HASH_FILE="$TEMP_FOLDER/old_md5sum"
+
+mkdir -p "$TEMP_FOLDER"
+
 if [ -z "$ARRONDISSEMENTS" ]; then
     ARRONDISSEMENTS=".."
 fi
@@ -17,14 +23,14 @@ function debug {
 }
 
 function login {
-    body=$(curl -s -L --referer ";auto" --cookie-jar cookies.txt --cookie cookies.txt "$LOGIN_URL" | hxnormalize -x)
+    body=$(curl -s -L --referer ";auto" --cookie-jar "$COOKIES_FILE" --cookie "$COOKIES_FILE" "$LOGIN_URL" | hxnormalize -x)
     login_form=$(echo "$body" | hxselect '#form-login')
 
     if [ -n "$login_form" ]; then
         debug "Login form detected"
 
         login_post_url=$(echo "$login_form" | hxselect -c '#form-login::attr(action)' | hxunent)
-        curl -o /dev/null -s -L --referer ";auto" --cookie-jar cookies.txt --cookie cookies.txt --data-urlencode "username=$PARIS_USERNAME" --data-urlencode "password=$PARIS_PASSWORD" --data-urlencode "Submit=" "$login_post_url"
+        curl -o /dev/null -s -L --referer ";auto" --cookie-jar "$COOKIES_FILE" --cookie "$COOKIES_FILE" --data-urlencode "username=$PARIS_USERNAME" --data-urlencode "password=$PARIS_PASSWORD" --data-urlencode "Submit=" "$login_post_url"
     else
         logout_icon=$(echo "$body" | hxselect '.mcp-icon-deconnexion')
         if [ -n "$logout_icon" ]; then
@@ -38,7 +44,7 @@ function login {
 
 login
 
-appointments_body=$(curl -s -L --referer ";auto" --cookie-jar cookies.txt --cookie cookies.txt --data "page=appointmenttitresearch&nb_consecutive_slots=1&zip_code=$ZIP_CODE&action_presearch=" "$MAIN_URL" |
+appointments_body=$(curl -s -L --referer ";auto" --cookie-jar "$COOKIES_FILE" --cookie "$COOKIES_FILE" --data "page=appointmenttitresearch&nb_consecutive_slots=1&zip_code=$ZIP_CODE&action_presearch=" "$MAIN_URL" |
     hxnormalize -x)
 appointments=$(echo "$appointments_body" | hxselect 'div.nextAvailableAppointments')
 if [ "$appointments" = '' ]; then
@@ -62,11 +68,11 @@ fi
 dates=$(echo "$appointments" | hxselect -s '\n' -c "a::attr(title)")
 text=$(echo -e "Availabilities in $matches\n$dates\n$MAIN_URL")
 
-touch old_md5sum
+touch "$HASH_FILE"
 hash=$(echo "$text" | md5sum)
-previous_hash=$(cat old_md5sum)
+previous_hash=$(cat "$HASH_FILE")
 
-echo -n "$hash" >old_md5sum
+echo -n "$hash" >"$HASH_FILE"
 
 if [ "$hash" = "$previous_hash" ]; then
     debug "Same hash, no changes"
