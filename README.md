@@ -5,6 +5,10 @@ Peut envoyer un message optionellement sur Telegram.
 
 Ce script peut vous être utile si vous habitez à Paris et que vous avez besoin de renouveller votre carte d'identité/passeport.
 
+## Résultat
+
+![Capture d'écran de Telegram](screenshots/telegram-result.png)
+
 ## Utilisation
 
 ### Pré-requis
@@ -19,8 +23,8 @@ PARIS_USERNAME et PARIS_PASSWORD sont nécessaires pour lancer le script.
 
 ```sh
 $ PARIS_USERNAME="<email>" PARIS_PASSWORD="<password>" ./alerter.sh
-debug: No login form detected, cookies from last time are still active
-No appointments
+2023-05-07 14:47:27.954884541+02:00: No login form detected, cookies from last time are still active
+2023-05-07 14:47:28.115901926+02:00: No appointments
 ```
 
 On peut aussi être alerté par un message Telegram lorsqu'il y a une nouvelle disponibilité
@@ -30,7 +34,7 @@ On peut aussi être alerté par un message Telegram lorsqu'il y a une nouvelle d
 $ TELEGRAM_CHAT_ID="<telegram chat id>" TELEGRAM_BOT_TOKEN="<telegram bot token>" PARIS_USERNAME="<email>" PARIS_PASSWORD="<password>" ./alerter.sh
 ```
 
-Mon utilisation dans un cron, toutes les 20 mins, avec le log dans `/tmp/alerter.log`
+Une utilisation dans un cron, toutes les 20 mins, avec le log dans `/tmp/alerter.log`
 ```sh
 $ crontab -l
 */20 * * * * TELEGRAM_BOT_TOKEN="foo" TELEGRAM_CHAT_ID="bar" PARIS_USERNAME="baz" PARIS_PASSWORD="bla" /home/aerion/projets/rdvtitres-alerter/alerter.sh >> /tmp/alerter.log 2>&1
@@ -39,12 +43,18 @@ $ cat /tmp/alerter.log
 2023-05-07 14:47:28.115901926+02:00: No appointments
 ```
 
+On peut aussi filtrer sur certains arrondissements (il y aura moins de résultats), en passant une regex dans la variable d'environnement `ARRONDISSEMENTS`.
+```sh
+# Filtre sur les arrondissements 75001 et 75020
+$ ARRONDISSEMENTS="(01|20)" PARIS_USERNAME="<email>" PARIS_PASSWORD="<password>" ./alerter.sh
+```
+
 ### Autre
 
 * Un code de retour `O` indique lorsqu'un rdv est disponible
 * Un code de retour entre `1` et `10` indique qu'il n'y a pas de rdv de disponible
 * Un code de retour supérieur à `10` indique un cas d'erreur inattendu
-* Deux fichiers sont créés dans le même dossier
+* Deux fichiers sont créés dans le dossier `/tmp/rdvtitres-alerter` :
   * `cookies.txt` : gardant le contenu des cookies
   * `old_md5sum` : gardant un état des disponibilités, pour éviter de notifier quand ce sont les mêmes rendez-vous
 
